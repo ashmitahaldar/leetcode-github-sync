@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import sys
+
+from .config import load_config
+from .errors import SyncError
+from .github import GitHubClient
+from .http import HttpClient
+from .leetcode import LeetCodeClient
+from .secrets import Redactor, SecretBundle, load_env_file
+from .sync import build_plan, make_commit_message
+from .templates import CONFIG_TEMPLATE, ENV_EXAMPLE_TEMPLATE, GITIGNORE_ENTRIES, README_TEMPLATE
+
+
+DEFAULT_CONFIG = Path("leetcode-sync.toml")
+DEFAULT_ENV = Path(".env")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    try:
+        if args.command == "init":
+            return cmd_init()
+
+        load_env_file(DEFAULT_ENV)
+        secrets = SecretBundle.from_env()
+        redactor = Redactor(secrets.values())
+
+        config = load_config(Path(args.config))
+        missing = secrets.validate()
+        if missing:
+            raise SyncError(f"Missing required environment values: {', '.join(missing)}")
+
+        http = HttpClient(
+            max_retries=config.sync.max_retries,
+            request_delay_seconds=config.sync.request_delay_seconds,
+        )
+        leetcode = LeetCodeClient(secrets=secrets, http=http)
+        github = GitHubClient(config=config.github, token=secrets.github_token, http=http)
+
+        if args.command == "status":
+            return cmd_status(leetcode, github)
+        if args.command == "sync":
+            return cmd_sync(args, config, leetcode, github)
+
+        parser.print_help()
+        return 1
+    except SyncError as exc:
+        redactor = locals().get("redactor", Redactor([]))
+        print(f"error: {redactor.redact(exc)}", file=sys.stderr)
+        return 1
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="leetcode-sync")
+    parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="Path to leetcode-sync.toml")
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    subparsers.add_parser("init", help="Create starter config and env files")
+    subparsers.add_parser("status", help="Validate configuration and remote access")
+
+    sync_parser = subparsers.add_parser("sync", help="Sync accepted submissions")
+    sync_parser.add_argument("--dry-run", action="store_true", help="Preview changes without committing")
+    sync_parser.add_argument("--since", help="Only sync submissions since YYYY-MM-DD")
+
+    return parser
+
+
+def cmd_init() -> int:
+    created = []
+    starter_files = {
+        "leetcode-sync.toml": CONFIG_TEMPLATE,
+        ".env.example": ENV_EXAMPLE_TEMPLATE,
+        "README.md": README_TEMPLATE,
+    }
+    for filename, content in starter_files.items():
+        target = Path(filename)
+        if not target.exists():
+            target.write_text(content, encoding="utf-8")
+            created.append(filename)
+
+    gitignore = Path(".gitignore")
+    existing_entries = set(gitignore.read_text(encoding="utf-8").splitlines()) if gitignore.exists() else set()
+    missing_entries = [entry for entry in GITIGNORE_ENTRIES if entry not in existing_entries]
+    if missing_entries:
+        with gitignore.open("a", encoding="utf-8") as handle:
+            if gitignore.exists() and gitignore.stat().st_size > 0:
+                handle.write("\n")
+            handle.write("\n".join(missing_entries) + "\n")
+        created.append(".gitignore entries")
+
+    if not created:
+        print("No files created; starter files already exist.")
+    else:
+        print("Created: " + ", ".join(created))
+    return 0
+
+
+def cmd_status(leetcode: LeetCodeClient, github: GitHubClient) -> int:
+    username = leetcode.validate_auth()
+    default_branch = github.validate_repo()
+    print(f"LeetCode auth: signed in as {username}")
+    print(f"GitHub repo: accessible, default branch is {default_branch}")
+    return 0
+
+
+def cmd_sync(args: argparse.Namespace, config, leetcode: LeetCodeClient, github: GitHubClient) -> int:
+    plan = build_plan(config=config, leetcode=leetcode, github=github, since=args.since)
+    print_plan(plan)
+
+    if args.dry_run:
+        print("Dry run complete; no GitHub changes were written.")
+        return 0
+
+    if not plan.has_changes:
+        print("No changes to commit.")
+        return 0
+
+    message = make_commit_message(plan)
+    sha = github.commit_changes(plan.changes, message)
+    print(f"Committed {len(plan.changes)} file change(s): {sha}")
+    return 0
+
+
+def print_plan(plan) -> None:
+    creates = plan.count("create")
+    updates = plan.count("update")
+    print(f"Planned changes: {creates} create(s), {updates} update(s), {len(plan.skipped)} skip(s)")
+    for warning in plan.warnings:
+        print(f"warning: {warning}")
+    for change in plan.changes:
+        print(f"{change.action}: {change.path}")

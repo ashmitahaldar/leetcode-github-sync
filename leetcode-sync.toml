@@ -1,0 +1,13 @@
+[github]
+owner = "your-github-username"
+repo = "your-target-repo"
+branch = "main"
+
+[sync]
+problems_root = "problems"
+create_notes = true
+request_delay_seconds = 0.35
+max_retries = 3
+
+[leetcode]
+page_size = 50
