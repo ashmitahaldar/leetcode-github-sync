@@ -17,6 +17,43 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+## Quick Start: Try It Safely
+
+Use dry-run mode before writing anything to GitHub.
+
+1. Make sure your target GitHub repository already exists and has a `main` branch.
+2. Activate the local environment:
+
+```bash
+source .venv/bin/activate
+```
+
+3. Edit `leetcode-sync.toml` with your GitHub owner, repo, and branch.
+4. Create `.env`:
+
+```bash
+cp .env.example .env
+```
+
+5. Add your LeetCode cookies and GitHub token to `.env`.
+6. Check that authentication works:
+
+```bash
+leetcode-sync status
+```
+
+7. Preview the sync without writing to GitHub:
+
+```bash
+leetcode-sync sync --dry-run
+```
+
+8. If the preview looks right, run the real sync:
+
+```bash
+leetcode-sync sync
+```
+
 ## Configure
 
 Edit `leetcode-sync.toml`:
