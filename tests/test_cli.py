@@ -1,6 +1,6 @@
 from argparse import Namespace
 
-from leetcode_sync.cli import cmd_sync
+from leetcode_sync.cli import main, cmd_sync
 from leetcode_sync.planner import SyncPlan
 
 
@@ -47,3 +47,21 @@ def test_dry_run_prints_progress(monkeypatch, capsys):
     assert "[leetcode-sync] Starting dry run..." in captured.err
     assert "[leetcode-sync] fake planner progress" in captured.err
     assert "Dry run complete" in captured.out
+
+
+def test_help_command_prints_global_help_without_config(capsys):
+    result = main(["help"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "usage: leetcode-sync" in captured.out
+    assert "sync" in captured.out
+
+
+def test_help_command_prints_topic_help_without_config(capsys):
+    result = main(["help", "sync"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "usage: leetcode-sync sync" in captured.out
+    assert "--dry-run" in captured.out

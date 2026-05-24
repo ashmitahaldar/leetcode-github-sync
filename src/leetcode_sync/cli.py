@@ -23,6 +23,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.command == "help":
+            return cmd_help(parser, args.topic)
         if args.command == "init":
             return cmd_init()
 
@@ -61,14 +63,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command")
 
-    subparsers.add_parser("init", help="Create starter config and env files")
-    subparsers.add_parser("status", help="Validate configuration and remote access")
+    help_parser = subparsers.add_parser("help", help="Show global or command-specific help")
+    help_parser.add_argument("topic", nargs="?", choices=["init", "status", "sync"], help="Command to explain")
+
+    init_parser = subparsers.add_parser("init", help="Create starter config and env files")
+    status_parser = subparsers.add_parser("status", help="Validate configuration and remote access")
 
     sync_parser = subparsers.add_parser("sync", help="Sync accepted submissions")
     sync_parser.add_argument("--dry-run", action="store_true", help="Preview changes without committing")
     sync_parser.add_argument("--since", help="Only sync submissions since YYYY-MM-DD")
 
+    parser.set_defaults(command_parsers={"init": init_parser, "status": status_parser, "sync": sync_parser})
     return parser
+
+
+def cmd_help(parser: argparse.ArgumentParser, topic: str | None) -> int:
+    if topic:
+        parser.get_default("command_parsers")[topic].print_help()
+    else:
+        parser.print_help()
+    return 0
 
 
 def cmd_init() -> int:
