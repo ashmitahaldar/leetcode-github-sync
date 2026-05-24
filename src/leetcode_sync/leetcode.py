@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from .errors import AuthError, RemoteApiError
@@ -72,12 +73,20 @@ class LeetCodeClient:
             raise AuthError("LeetCode session is not signed in")
         return str(status.get("username") or "unknown")
 
-    def fetch_accepted_submissions(self, page_size: int = 50, since_timestamp: int | None = None) -> list[Submission]:
+    def fetch_accepted_submissions(
+        self,
+        page_size: int = 50,
+        since_timestamp: int | None = None,
+        progress: Callable[[str], None] | None = None,
+    ) -> list[Submission]:
         submissions: list[Submission] = []
         offset = 0
         last_key = None
+        page_number = 1
 
         while True:
+            if progress:
+                progress(f"Fetching LeetCode submissions page {page_number}...")
             payload = self._graphql(
                 SUBMISSION_LIST_QUERY,
                 {"offset": offset, "limit": page_size, "lastKey": last_key},
@@ -87,18 +96,29 @@ class LeetCodeClient:
             if not isinstance(raw_submissions, list):
                 raise RemoteApiError("LeetCode returned an invalid submissions payload")
 
+            accepted_on_page = 0
             for raw in raw_submissions:
                 if str(raw.get("statusDisplay", "")).lower() != "accepted":
                     continue
                 if since_timestamp is not None and int(raw.get("timestamp", 0)) < since_timestamp:
                     continue
+                accepted_on_page += 1
+                next_count = len(submissions) + 1
+                if progress and (next_count == 1 or next_count % 10 == 0):
+                    progress(f"Fetching details for accepted submission {next_count}...")
                 submissions.append(self.fetch_submission_details(str(raw.get("id"))))
 
+            if progress:
+                progress(
+                    f"Page {page_number}: found {accepted_on_page} accepted submission(s), "
+                    f"{len(submissions)} total."
+                )
             has_next = bool(page.get("hasNext")) or bool(page.get("lastKey"))
             last_key = page.get("lastKey")
             if not has_next:
                 break
             offset += page_size
+            page_number += 1
 
         return submissions
 

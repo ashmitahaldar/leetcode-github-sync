@@ -110,21 +110,31 @@ def cmd_status(leetcode: LeetCodeClient, github: GitHubClient) -> int:
 
 
 def cmd_sync(args: argparse.Namespace, config, leetcode: LeetCodeClient, github: GitHubClient) -> int:
-    plan = build_plan(config=config, leetcode=leetcode, github=github, since=args.since)
+    log_progress("Starting dry run..." if args.dry_run else "Starting sync...")
+    plan = build_plan(config=config, leetcode=leetcode, github=github, since=args.since, progress=log_progress)
+    log_progress("Sync plan ready.")
     print_plan(plan)
 
     if args.dry_run:
+        log_progress("Dry run finished without writing to GitHub.")
         print("Dry run complete; no GitHub changes were written.")
         return 0
 
     if not plan.has_changes:
+        log_progress("No GitHub commit needed.")
         print("No changes to commit.")
         return 0
 
     message = make_commit_message(plan)
+    log_progress(f"Creating GitHub commit with {len(plan.changes)} file change(s)...")
     sha = github.commit_changes(plan.changes, message)
+    log_progress("GitHub commit created.")
     print(f"Committed {len(plan.changes)} file change(s): {sha}")
     return 0
+
+
+def log_progress(message: str) -> None:
+    print(f"[leetcode-sync] {message}", file=sys.stderr, flush=True)
 
 
 def print_plan(plan) -> None:
