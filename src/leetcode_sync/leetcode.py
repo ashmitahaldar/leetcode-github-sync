@@ -22,12 +22,6 @@ query submissionList($offset: Int!, $limit: Int!, $lastKey: String) {
       timestamp
       runtime
       memory
-      code
-      question {
-        questionFrontendId
-        title
-        titleSlug
-      }
     }
   }
 }
@@ -98,10 +92,7 @@ class LeetCodeClient:
                     continue
                 if since_timestamp is not None and int(raw.get("timestamp", 0)) < since_timestamp:
                     continue
-                submission = self._normalize_submission(raw)
-                if not submission.code:
-                    submission = self.fetch_submission_details(submission.submission_id)
-                submissions.append(submission)
+                submissions.append(self.fetch_submission_details(str(raw.get("id"))))
 
             has_next = bool(page.get("hasNext")) or bool(page.get("lastKey"))
             last_key = page.get("lastKey")
