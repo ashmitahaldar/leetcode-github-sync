@@ -58,7 +58,22 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="leetcode-sync")
+    parser = argparse.ArgumentParser(
+        prog="leetcode-sync",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""common commands:
+  leetcode-sync init
+  leetcode-sync status
+  leetcode-sync sync --dry-run
+  leetcode-sync sync --since YYYY-MM-DD
+  leetcode-sync sync
+
+command help:
+  leetcode-sync help sync
+  leetcode-sync help init
+  leetcode-sync help status
+""",
+    )
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="Path to leetcode-sync.toml")
 
     subparsers = parser.add_subparsers(dest="command")

@@ -56,6 +56,8 @@ def test_help_command_prints_global_help_without_config(capsys):
     assert result == 0
     assert "usage: leetcode-sync" in captured.out
     assert "sync" in captured.out
+    assert "leetcode-sync sync --dry-run" in captured.out
+    assert "leetcode-sync sync --since YYYY-MM-DD" in captured.out
 
 
 def test_help_command_prints_topic_help_without_config(capsys):
