@@ -121,7 +121,14 @@ class LeetCodeClient:
     def _graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         headers = {
             "Cookie": self._cookie_header(),
+            "Origin": "https://leetcode.com",
             "Referer": "https://leetcode.com/",
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "x-requested-with": "XMLHttpRequest",
         }
         if self.secrets.csrf_token:
             headers["x-csrftoken"] = self.secrets.csrf_token

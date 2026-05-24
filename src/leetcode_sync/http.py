@@ -44,7 +44,10 @@ class HttpClient:
                     return JsonResponse(status=response.status, data=json.loads(raw) if raw else {})
             except HTTPError as exc:
                 if exc.code in {401, 403}:
-                    raise AuthError(f"Authentication failed for {url}: HTTP {exc.code}") from exc
+                    raise AuthError(
+                        f"Authentication failed for {url}: HTTP {exc.code}. "
+                        "For LeetCode, refresh LEETCODE_SESSION and CSRFTOKEN from the same logged-in browser session."
+                    ) from exc
                 if exc.code == 429:
                     raise RateLimitError(f"Rate limited by {url}: HTTP 429") from exc
                 if exc.code < 500 or attempt == self.max_retries:
