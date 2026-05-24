@@ -1,5 +1,7 @@
 # LeetCode GitHub Sync
 
+[![CI](https://github.com/ashmitahaldar/leetcode-github-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/ashmitahaldar/leetcode-github-sync/actions/workflows/ci.yml)
+
 A lightweight Python CLI that syncs accepted LeetCode submissions into an existing GitHub repository.
 
 It uses:
