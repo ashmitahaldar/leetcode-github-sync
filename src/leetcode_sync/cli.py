@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import sys
 
+from .commands import cmd_help, cmd_init, cmd_status, cmd_sync
 from .config import load_config
 from .errors import SyncError
 from .github import GitHubClient
 from .http import HttpClient
 from .leetcode import LeetCodeClient
 from .secrets import Redactor, SecretBundle, load_env_file
-from .sync import build_plan, make_commit_message
-from .templates import CONFIG_TEMPLATE, ENV_EXAMPLE_TEMPLATE, GITIGNORE_ENTRIES, README_TEMPLATE
 
 
 DEFAULT_CONFIG = Path("leetcode-sync.toml")
@@ -90,113 +89,3 @@ command help:
 
     parser.set_defaults(command_parsers={"init": init_parser, "status": status_parser, "sync": sync_parser})
     return parser
-
-
-def cmd_help(parser: argparse.ArgumentParser, topic: str | None) -> int:
-    if topic:
-        parser.get_default("command_parsers")[topic].print_help()
-    else:
-        parser.print_help()
-    return 0
-
-
-def cmd_init() -> int:
-    created = []
-    starter_files = {
-        "leetcode-sync.toml": CONFIG_TEMPLATE,
-        ".env.example": ENV_EXAMPLE_TEMPLATE,
-        "README.md": README_TEMPLATE,
-    }
-    for filename, content in starter_files.items():
-        target = Path(filename)
-        if not target.exists():
-            target.write_text(content, encoding="utf-8")
-            created.append(filename)
-
-    gitignore = Path(".gitignore")
-    existing_entries = set(gitignore.read_text(encoding="utf-8").splitlines()) if gitignore.exists() else set()
-    missing_entries = [entry for entry in GITIGNORE_ENTRIES if entry not in existing_entries]
-    if missing_entries:
-        with gitignore.open("a", encoding="utf-8") as handle:
-            if gitignore.exists() and gitignore.stat().st_size > 0:
-                handle.write("\n")
-            handle.write("\n".join(missing_entries) + "\n")
-        created.append(".gitignore entries")
-
-    if not created:
-        print("No files created; starter files already exist.")
-    else:
-        print("Created: " + ", ".join(created))
-    return 0
-
-
-def cmd_status(leetcode: LeetCodeClient, github: GitHubClient) -> int:
-    username = leetcode.validate_auth()
-    default_branch = github.validate_repo()
-    print(f"LeetCode auth: signed in as {username}")
-    print(f"GitHub repo: accessible, default branch is {default_branch}")
-    return 0
-
-
-def cmd_sync(args: argparse.Namespace, config, leetcode: LeetCodeClient, github: GitHubClient) -> int:
-    log_progress("Starting dry run..." if args.dry_run else "Starting sync...")
-    plan = build_plan(config=config, leetcode=leetcode, github=github, since=args.since, progress=log_progress)
-    log_progress("Sync plan ready.")
-    print_plan(plan)
-
-    if args.dry_run:
-        log_progress("Dry run finished without writing to GitHub.")
-        print("Dry run complete; no GitHub changes were written.")
-        return 0
-
-    if not plan.has_changes:
-        log_progress("No GitHub commit needed.")
-        print("No changes to commit.")
-        return 0
-
-    message = make_commit_message(plan)
-    log_progress(f"Creating GitHub commit with {len(plan.changes)} file change(s)...")
-    sha = github.commit_changes(plan.changes, message)
-    log_progress("GitHub commit created.")
-    print(f"Committed {len(plan.changes)} file change(s): {sha}")
-    return 0
-
-
-def log_progress(message: str) -> None:
-    print(f"[leetcode-sync] {message}", file=sys.stderr, flush=True)
-
-
-def print_plan(plan) -> None:
-    creates = plan.count("create")
-    updates = plan.count("update")
-    print(f"Planned changes: {creates} create(s), {updates} update(s), {len(plan.skipped)} skip(s)")
-    for warning in plan.warnings:
-        print(f"warning: {warning}")
-    for directory, changes in _group_changes_by_directory(plan.changes).items():
-        print(f"{directory}/")
-        for change in changes:
-            filename = PurePosixPath(change.path).name
-            print(f"  {change.action}: {filename}")
-
-
-def _group_changes_by_directory(changes):
-    grouped = {}
-    for change in changes:
-        path = PurePosixPath(change.path)
-        directory = str(path.parent) if str(path.parent) != "." else "(root)"
-        grouped.setdefault(directory, []).append(change)
-
-    return {
-        directory: sorted(items, key=lambda change: _file_display_order(PurePosixPath(change.path).name))
-        for directory, items in sorted(grouped.items())
-    }
-
-
-def _file_display_order(filename: str) -> tuple[int, str]:
-    if filename.startswith("solution."):
-        return (0, filename)
-    if filename == "metadata.json":
-        return (1, filename)
-    if filename == "notes.md":
-        return (2, filename)
-    return (3, filename)
