@@ -11,6 +11,32 @@ It uses:
 - A TOML config file for non-secret settings.
 - A git-ignored `.env` file for secrets.
 
+## How It Works
+
+```text
+LeetCode GraphQL
+      |
+      v
+Accepted submissions
+      |
+      v
+Sync planner
+      |
+      v
+Generated solution files + metadata
+      |
+      v
+GitHub Commit API
+```
+
+The tool reads accepted submissions from LeetCode using your browser session cookies, then compares them against the generated files already present in the configured GitHub repository.
+
+Before writing anything, the sync planner builds a file-level plan: create, update, or skip. `sync --dry-run` prints that plan without creating a commit. A real `sync` uses the GitHub Commit API to write one all-or-nothing commit to the configured branch.
+
+After the first backfill, sync becomes incremental automatically. The tool reads existing `metadata.json` files from the target repository, finds the latest synced `submitted_at_unix`, applies a one-day lookback buffer, and asks LeetCode only for recent submissions. `sync --full-sync` bypasses this optimization when you want a complete rescan.
+
+User-owned notes are protected: `notes.md` is created once if missing, then never overwritten by the tool. Secrets stay local in `.env` and are never written into generated files.
+
 ## Install
 
 ```bash
