@@ -97,10 +97,14 @@ class LeetCodeClient:
                 raise RemoteApiError("LeetCode returned an invalid submissions payload")
 
             accepted_on_page = 0
+            page_has_submission_at_or_after_cutoff = since_timestamp is None
             for raw in raw_submissions:
+                raw_timestamp = int(raw.get("timestamp", 0))
+                if since_timestamp is not None and raw_timestamp >= since_timestamp:
+                    page_has_submission_at_or_after_cutoff = True
                 if str(raw.get("statusDisplay", "")).lower() != "accepted":
                     continue
-                if since_timestamp is not None and int(raw.get("timestamp", 0)) < since_timestamp:
+                if since_timestamp is not None and raw_timestamp < since_timestamp:
                     continue
                 accepted_on_page += 1
                 next_count = len(submissions) + 1
@@ -115,7 +119,7 @@ class LeetCodeClient:
                 )
             has_next = bool(page.get("hasNext")) or bool(page.get("lastKey"))
             last_key = page.get("lastKey")
-            if not has_next:
+            if not has_next or not page_has_submission_at_or_after_cutoff:
                 break
             offset += page_size
             page_number += 1

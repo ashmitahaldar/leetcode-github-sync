@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .errors import SyncError
 from .github import GitHubClient
 from .leetcode import LeetCodeClient
 from .output import log_progress, print_plan
@@ -57,8 +58,18 @@ def cmd_status(leetcode: LeetCodeClient, github: GitHubClient) -> int:
 
 
 def cmd_sync(args: argparse.Namespace, config, leetcode: LeetCodeClient, github: GitHubClient) -> int:
+    if args.since and args.full_sync:
+        raise SyncError("--since cannot be combined with --full-sync")
+
     log_progress("Starting dry run..." if args.dry_run else "Starting sync...")
-    plan = build_plan(config=config, leetcode=leetcode, github=github, since=args.since, progress=log_progress)
+    plan = build_plan(
+        config=config,
+        leetcode=leetcode,
+        github=github,
+        since=args.since,
+        full_sync=args.full_sync,
+        progress=log_progress,
+    )
     log_progress("Sync plan ready.")
     print_plan(plan)
 

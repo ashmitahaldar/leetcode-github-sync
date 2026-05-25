@@ -1,7 +1,10 @@
 from argparse import Namespace
 
+import pytest
+
 from leetcode_sync.cli import main
 from leetcode_sync.commands import cmd_sync
+from leetcode_sync.errors import SyncError
 from leetcode_sync.output import print_plan
 from leetcode_sync.planner import FileChange, SyncPlan
 
@@ -27,7 +30,7 @@ def test_dry_run_does_not_commit(monkeypatch):
 
     monkeypatch.setattr("leetcode_sync.commands.build_plan", fake_build_plan)
 
-    result = cmd_sync(Namespace(dry_run=True, since=None), config=object(), leetcode=FakeLeetCode(), github=github)
+    result = cmd_sync(Namespace(dry_run=True, since=None, full_sync=False), config=object(), leetcode=FakeLeetCode(), github=github)
 
     assert result == 0
     assert github.committed is False
@@ -42,7 +45,7 @@ def test_dry_run_prints_progress(monkeypatch, capsys):
 
     monkeypatch.setattr("leetcode_sync.commands.build_plan", fake_build_plan)
 
-    result = cmd_sync(Namespace(dry_run=True, since=None), config=object(), leetcode=FakeLeetCode(), github=github)
+    result = cmd_sync(Namespace(dry_run=True, since=None, full_sync=False), config=object(), leetcode=FakeLeetCode(), github=github)
     captured = capsys.readouterr()
 
     assert result == 0
@@ -60,6 +63,7 @@ def test_help_command_prints_global_help_without_config(capsys):
     assert "sync" in captured.out
     assert "leetcode-sync sync --dry-run" in captured.out
     assert "leetcode-sync sync --since YYYY-MM-DD" in captured.out
+    assert "leetcode-sync sync --full-sync" in captured.out
 
 
 def test_help_command_prints_topic_help_without_config(capsys):
@@ -69,6 +73,17 @@ def test_help_command_prints_topic_help_without_config(capsys):
     assert result == 0
     assert "usage: leetcode-sync sync" in captured.out
     assert "--dry-run" in captured.out
+    assert "--full-sync" in captured.out
+
+
+def test_sync_command_rejects_since_with_full_sync():
+    with pytest.raises(SyncError, match="cannot be combined"):
+        cmd_sync(
+            Namespace(dry_run=True, since="2026-05-01", full_sync=True),
+            config=object(),
+            leetcode=FakeLeetCode(),
+            github=FakeGitHub(),
+        )
 
 
 def test_print_plan_groups_changes_by_problem(capsys):

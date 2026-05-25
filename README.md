@@ -148,16 +148,24 @@ Preview changes without writing to GitHub:
 leetcode-sync sync --dry-run
 ```
 
-Sync everything:
+Sync accepted submissions:
 
 ```bash
 leetcode-sync sync
 ```
 
+After the first backfill, plain `sync` automatically uses repository metadata to fetch only recent submissions, with a one-day lookback buffer.
+
 Sync submissions since a date:
 
 ```bash
 leetcode-sync sync --since 2026-01-01
+```
+
+Force a complete LeetCode rescan:
+
+```bash
+leetcode-sync sync --full-sync
 ```
 
 Create starter local files in another directory:
@@ -186,8 +194,10 @@ problems/
 - Only Accepted submissions are synced.
 - The latest accepted submission is kept per problem and language.
 - Multiple languages for the same problem are preserved.
+- The first sync performs a full backfill; later syncs automatically use `metadata.json` timestamps to reduce LeetCode API calls.
 - Re-running sync is idempotent and creates no commit when nothing changed.
 - `sync --dry-run` prints planned creates, updates, and skips without writing.
+- `sync --full-sync` bypasses incremental mode and scans all accepted submissions.
 - GitHub writes are all-or-nothing through a single commit.
 - Secrets are redacted from error messages.
 

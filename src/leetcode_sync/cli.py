@@ -65,6 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
   leetcode-sync status
   leetcode-sync sync --dry-run
   leetcode-sync sync --since YYYY-MM-DD
+  leetcode-sync sync --full-sync
   leetcode-sync sync
 
 command help:
@@ -86,6 +87,7 @@ command help:
     sync_parser = subparsers.add_parser("sync", help="Sync accepted submissions")
     sync_parser.add_argument("--dry-run", action="store_true", help="Preview changes without committing")
     sync_parser.add_argument("--since", help="Only sync submissions since YYYY-MM-DD")
+    sync_parser.add_argument("--full-sync", action="store_true", help="Ignore metadata cutoff and scan all submissions")
 
     parser.set_defaults(command_parsers={"init": init_parser, "status": status_parser, "sync": sync_parser})
     return parser
