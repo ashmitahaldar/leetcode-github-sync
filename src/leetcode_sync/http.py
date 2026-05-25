@@ -7,7 +7,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from .errors import AuthError, RateLimitError, RemoteApiError
+from .errors import ApiResponseError, AuthError, RateLimitError, RemoteApiError
 
 
 @dataclass(frozen=True)
@@ -52,7 +52,11 @@ class HttpClient:
                     raise RateLimitError(f"Rate limited by {url}: HTTP 429") from exc
                 if exc.code < 500 or attempt == self.max_retries:
                     detail = exc.read().decode("utf-8", errors="replace")
-                    raise RemoteApiError(f"Request failed for {url}: HTTP {exc.code} {detail}") from exc
+                    raise ApiResponseError(
+                        f"Request failed for {url}: HTTP {exc.code} {detail}",
+                        status=exc.code,
+                        detail=detail,
+                    ) from exc
                 last_error = exc
             except (URLError, TimeoutError, json.JSONDecodeError) as exc:
                 last_error = exc

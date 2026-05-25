@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import quote
 
 from .config import GitHubConfig
-from .errors import RemoteApiError
+from .errors import ApiResponseError, RemoteApiError
 from .http import HttpClient
 from .planner import FileChange
 
@@ -26,8 +26,20 @@ class GitHubClient:
         self.http = http
 
     def validate_repo(self) -> str:
-        data = self._request("GET", f"/repos/{self.config.owner}/{self.config.repo}")
+        data = self._repo_metadata()
         default_branch = str(data.get("default_branch") or "")
+        if not default_branch:
+            raise RemoteApiError(
+                f"GitHub repository {self._repo_name} appears to be empty. "
+                f"Create it with a README or push an initial commit to {self.config.branch}, then rerun."
+            )
+        permissions = data.get("permissions")
+        if isinstance(permissions, dict) and permissions.get("push") is False:
+            raise RemoteApiError(
+                f"GitHub token can read {self._repo_name}, but cannot write to it. "
+                "Use a token with repository Contents: Read and write permission."
+            )
+        self._branch_state()
         return default_branch
 
     def list_files(self, root: str) -> dict[str, str]:
@@ -90,10 +102,23 @@ class GitHubClient:
         return str(commit["sha"])
 
     def _branch_state(self) -> BranchState:
-        ref = self._request(
-            "GET",
-            f"/repos/{self.config.owner}/{self.config.repo}/git/ref/heads/{self.config.branch}",
-        )
+        try:
+            ref = self._request(
+                "GET",
+                f"/repos/{self.config.owner}/{self.config.repo}/git/ref/heads/{self.config.branch}",
+            )
+        except ApiResponseError as exc:
+            if exc.status == 404:
+                raise RemoteApiError(
+                    f"GitHub branch '{self.config.branch}' was not found in {self._repo_name}. "
+                    f"Create an initial commit on '{self.config.branch}' or update github.branch in leetcode-sync.toml."
+                ) from exc
+            if exc.status == 409:
+                raise RemoteApiError(
+                    f"GitHub repository {self._repo_name} is empty. "
+                    f"Create it with a README or push an initial commit to '{self.config.branch}', then rerun."
+                ) from exc
+            raise
         commit_sha = ref.get("object", {}).get("sha")
         if not commit_sha:
             raise RemoteApiError(f"GitHub branch not found: {self.config.branch}")
@@ -102,6 +127,21 @@ class GitHubClient:
         if not tree_sha:
             raise RemoteApiError(f"GitHub branch has no tree: {self.config.branch}")
         return BranchState(sha=str(commit_sha), tree_sha=str(tree_sha))
+
+    @property
+    def _repo_name(self) -> str:
+        return f"{self.config.owner}/{self.config.repo}"
+
+    def _repo_metadata(self) -> dict[str, Any]:
+        try:
+            return self._request("GET", f"/repos/{self.config.owner}/{self.config.repo}")
+        except ApiResponseError as exc:
+            if exc.status == 404:
+                raise RemoteApiError(
+                    f"GitHub repository {self._repo_name} is not accessible. "
+                    "Check github.owner, github.repo, and that GITHUB_TOKEN has access to this repository."
+                ) from exc
+            raise
 
     def _request(self, method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
         return self.http.request_json(

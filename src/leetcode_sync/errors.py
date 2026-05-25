@@ -16,3 +16,12 @@ class RateLimitError(SyncError):
 
 class RemoteApiError(SyncError):
     """Raised when a remote API returns an unexpected response."""
+
+
+class ApiResponseError(RemoteApiError):
+    """Raised when a remote API returns a non-success HTTP response."""
+
+    def __init__(self, message: str, status: int, detail: str = ""):
+        super().__init__(message)
+        self.status = status
+        self.detail = detail
