@@ -11,7 +11,8 @@ A lightweight Python CLI that syncs accepted LeetCode submissions into an existi
 5. Preview with `leetcode-sync sync --dry-run`.
 6. Sync with `leetcode-sync sync`.
 
-Generated solution files and `metadata.json` may be updated by the tool. `notes.md` is created once and never overwritten.
+Generated solution files and `metadata.json` may be updated by the tool.
+`notes.md` is created once and never overwritten.
 """
 
 CONFIG_TEMPLATE = """[github]

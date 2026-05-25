@@ -142,6 +142,18 @@ Check setup:
 leetcode-sync status
 ```
 
+Run full setup diagnostics:
+
+```bash
+leetcode-sync doctor
+```
+
+Show non-secret config and secret presence:
+
+```bash
+leetcode-sync config show
+```
+
 Preview changes without writing to GitHub:
 
 ```bash
@@ -198,6 +210,9 @@ problems/
 - Re-running sync is idempotent and creates no commit when nothing changed.
 - `sync --dry-run` prints planned creates, updates, and skips without writing.
 - `sync --full-sync` bypasses incremental mode and scans all accepted submissions.
+- `doctor` validates setup and reports actionable failures.
+- `config show` prints config and whether secrets are set without printing secret values.
+- `sync` and `sync --dry-run` finish with a concise summary showing repo, mode, fetched submissions, planned files, and commit status.
 - GitHub writes are all-or-nothing through a single commit.
 - Secrets are redacted from error messages.
 
@@ -215,5 +230,13 @@ To remove synced files from GitHub, delete them in the target repository yoursel
 ## Tests
 
 ```bash
+pytest
+```
+
+Run the full local verification suite:
+
+```bash
+ruff check src tests
+mypy
 pytest
 ```

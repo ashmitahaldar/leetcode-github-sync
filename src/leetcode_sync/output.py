@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import PurePosixPath
 import sys
+from pathlib import PurePosixPath
 
 
 def log_progress(message: str) -> None:
@@ -21,8 +21,25 @@ def print_plan(plan) -> None:
             print(f"  {change.action}: {filename}")
 
 
+def print_run_summary(config, plan, commit: str | None, dry_run: bool) -> None:
+    print("Summary:")
+    print(f"  Repo: {config.github.owner}/{config.github.repo}@{config.github.branch}")
+    print(f"  Mode: {plan.mode}")
+    print(f"  LeetCode submissions fetched: {plan.submissions_fetched}")
+    print(
+        "  Files planned: "
+        f"{plan.count('create')} create(s), {plan.count('update')} update(s), {len(plan.skipped)} skip(s)"
+    )
+    if dry_run:
+        print("  Commit: dry-run only")
+    elif commit:
+        print(f"  Commit: {commit}")
+    else:
+        print("  Commit: none")
+
+
 def _group_changes_by_directory(changes):
-    grouped = {}
+    grouped: dict[str, list] = {}
     for change in changes:
         path = PurePosixPath(change.path)
         directory = str(path.parent) if str(path.parent) != "." else "(root)"

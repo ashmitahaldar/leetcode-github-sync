@@ -8,7 +8,6 @@ from .http import HttpClient
 from .models import Submission, slugify
 from .secrets import SecretBundle
 
-
 SUBMISSION_LIST_QUERY = """
 query submissionList($offset: Int!, $limit: Int!, $lastKey: String) {
   submissionList(offset: $offset, limit: $limit, lastKey: $lastKey) {
@@ -168,7 +167,8 @@ class LeetCodeClient:
 
     @staticmethod
     def _normalize_submission(raw: dict[str, Any]) -> Submission:
-        question = raw.get("question") if isinstance(raw.get("question"), dict) else {}
+        raw_question = raw.get("question")
+        question = raw_question if isinstance(raw_question, dict) else {}
         title = str(question.get("title") or raw.get("title") or "Unknown")
         title_slug = str(question.get("titleSlug") or raw.get("titleSlug") or slugify(title))
         frontend_id = str(question.get("questionFrontendId") or raw.get("questionFrontendId") or "0")

@@ -23,7 +23,9 @@ def render_problem_metadata(submissions: list[Submission]) -> str:
         "title": first.title,
         "title_slug": first.title_slug,
         "leetcode_url": f"https://leetcode.com/problems/{first.title_slug}/",
-        "solutions": [_metadata_for_submission(item) for item in sorted(submissions, key=lambda item: item.language.lower())],
+        "solutions": [
+            _metadata_for_submission(item) for item in sorted(submissions, key=lambda item: item.language.lower())
+        ],
     }
     return json.dumps(metadata, indent=2, sort_keys=True) + "\n"
 

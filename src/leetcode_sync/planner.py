@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import json
+from dataclasses import dataclass, field
 
 from .models import Submission
 from .render import render_notes, render_problem_metadata, render_solution
@@ -20,6 +20,9 @@ class SyncPlan:
     changes: list[FileChange] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    mode: str = "unknown"
+    submissions_fetched: int = 0
+    existing_files_fetched: int = 0
 
     @property
     def has_changes(self) -> bool:
@@ -60,7 +63,9 @@ def build_sync_plan(
 
         existing_metadata = _parse_metadata(existing_files.get(metadata_path))
         existing_solution_metadata = _metadata_for_language(existing_metadata, submission.language)
-        existing_submission_id = str(existing_solution_metadata.get("submission_id", "")) if existing_solution_metadata else ""
+        existing_submission_id = (
+            str(existing_solution_metadata.get("submission_id", "")) if existing_solution_metadata else ""
+        )
         existing_timestamp = (
             int(existing_solution_metadata.get("submitted_at_unix", 0)) if existing_solution_metadata else 0
         )
@@ -70,13 +75,16 @@ def build_sync_plan(
         elif existing_timestamp > submission.submitted_at:
             plan.skipped.append(solution_path)
             plan.warnings.append(
-                f"Skipped {solution_path}: repository metadata is newer than LeetCode submission {submission.submission_id}"
+                f"Skipped {solution_path}: repository metadata is newer than "
+                f"LeetCode submission {submission.submission_id}"
             )
         else:
             _add_if_changed(plan, existing_files, solution_path, render_solution(submission), generated=True)
 
         if create_notes and notes_path not in existing_files:
-            plan.changes.append(FileChange(path=notes_path, content=render_notes(submission), action="create", generated=False))
+            plan.changes.append(
+                FileChange(path=notes_path, content=render_notes(submission), action="create", generated=False)
+            )
         elif create_notes:
             plan.skipped.append(notes_path)
 

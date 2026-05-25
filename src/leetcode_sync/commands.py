@@ -6,7 +6,8 @@ from pathlib import Path
 from .errors import SyncError
 from .github import GitHubClient
 from .leetcode import LeetCodeClient
-from .output import log_progress, print_plan
+from .output import log_progress, print_plan, print_run_summary
+from .secrets import SecretBundle
 from .sync import build_plan, make_commit_message
 from .templates import CONFIG_TEMPLATE, ENV_EXAMPLE_TEMPLATE, GITIGNORE_ENTRIES, README_TEMPLATE
 
@@ -57,6 +58,64 @@ def cmd_status(leetcode: LeetCodeClient, github: GitHubClient) -> int:
     return 0
 
 
+def cmd_doctor(config, secrets: SecretBundle, leetcode: LeetCodeClient, github: GitHubClient) -> int:
+    ok = True
+    print("Config: ok")
+    print(f"Target repo: {config.github.owner}/{config.github.repo}@{config.github.branch}")
+
+    missing = secrets.validate()
+    if missing:
+        ok = False
+        print("Secrets: missing " + ", ".join(missing))
+    else:
+        print("Secrets: required values are set")
+    print(f"Optional CSRFTOKEN: {'set' if secrets.csrf_token else 'not set'}")
+
+    if secrets.leetcode_session:
+        try:
+            username = leetcode.validate_auth()
+            print(f"LeetCode auth: ok, signed in as {username}")
+        except SyncError as exc:
+            ok = False
+            print(f"LeetCode auth: failed - {exc}")
+    else:
+        print("LeetCode auth: skipped because LEETCODE_SESSION is missing")
+
+    if secrets.github_token:
+        try:
+            default_branch = github.validate_repo()
+            print(f"GitHub repo: ok, default branch is {default_branch}")
+        except SyncError as exc:
+            ok = False
+            print(f"GitHub repo: failed - {exc}")
+    else:
+        print("GitHub repo: skipped because GITHUB_TOKEN is missing")
+
+    return 0 if ok else 1
+
+
+def cmd_config_show(config, secrets: SecretBundle) -> int:
+    print("[github]")
+    print(f"owner = {config.github.owner}")
+    print(f"repo = {config.github.repo}")
+    print(f"branch = {config.github.branch}")
+    print()
+    print("[sync]")
+    print(f"problems_root = {config.sync.problems_root}")
+    print(f"create_notes = {config.sync.create_notes}")
+    print(f"request_delay_seconds = {config.sync.request_delay_seconds}")
+    print(f"max_retries = {config.sync.max_retries}")
+    print()
+    print("[leetcode]")
+    print(f"page_size = {config.leetcode.page_size}")
+    print()
+    print("[env]")
+    print(f"LEETCODE_SESSION = {_secret_state(secrets.leetcode_session)}")
+    print(f"CSRFTOKEN = {_secret_state(secrets.csrf_token)}")
+    print(f"GITHUB_TOKEN = {_secret_state(secrets.github_token)}")
+    return 0
+
+
 def cmd_sync(args: argparse.Namespace, config, leetcode: LeetCodeClient, github: GitHubClient) -> int:
     if args.since and args.full_sync:
         raise SyncError("--since cannot be combined with --full-sync")
@@ -76,11 +135,13 @@ def cmd_sync(args: argparse.Namespace, config, leetcode: LeetCodeClient, github:
     if args.dry_run:
         log_progress("Dry run finished without writing to GitHub.")
         print("Dry run complete; no GitHub changes were written.")
+        print_run_summary(config, plan, commit=None, dry_run=True)
         return 0
 
     if not plan.has_changes:
         log_progress("No GitHub commit needed.")
         print("No changes to commit.")
+        print_run_summary(config, plan, commit=None, dry_run=False)
         return 0
 
     message = make_commit_message(plan)
@@ -88,4 +149,9 @@ def cmd_sync(args: argparse.Namespace, config, leetcode: LeetCodeClient, github:
     sha = github.commit_changes(plan.changes, message)
     log_progress("GitHub commit created.")
     print(f"Committed {len(plan.changes)} file change(s): {sha}")
+    print_run_summary(config, plan, commit=sha, dry_run=False)
     return 0
+
+
+def _secret_state(value: str | None) -> str:
+    return "set" if value else "missing"

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
-import os
 
 
 def load_env_file(path: Path) -> None:
@@ -28,7 +28,7 @@ class SecretBundle:
     github_token: str
 
     @classmethod
-    def from_env(cls) -> "SecretBundle":
+    def from_env(cls) -> SecretBundle:
         return cls(
             leetcode_session=os.getenv("LEETCODE_SESSION", ""),
             csrf_token=os.getenv("CSRFTOKEN") or None,

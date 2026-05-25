@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import base64
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
@@ -43,20 +43,26 @@ class GitHubClient:
         return default_branch
 
     def list_files(self, root: str) -> dict[str, str]:
+        return self.get_files(self.list_paths(root))
+
+    def list_paths(self, root: str) -> list[str]:
         branch = self._branch_state()
         tree = self._request(
             "GET",
             f"/repos/{self.config.owner}/{self.config.repo}/git/trees/{branch.tree_sha}?recursive=1",
         )
-        files: dict[str, str] = {}
+        paths: list[str] = []
         for item in tree.get("tree", []):
             if item.get("type") != "blob":
                 continue
             path = str(item.get("path", ""))
             if not path.startswith(root.rstrip("/") + "/"):
                 continue
-            files[path] = self.get_file(path)
-        return files
+            paths.append(path)
+        return sorted(paths)
+
+    def get_files(self, paths: list[str]) -> dict[str, str]:
+        return {path: self.get_file(path) for path in paths}
 
     def get_file(self, path: str) -> str:
         encoded_path = quote(path, safe="/")

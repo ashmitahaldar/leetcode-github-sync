@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from pathlib import PurePosixPath
 import re
-
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import PurePosixPath
 
 LANGUAGE_EXTENSIONS = {
     "python": "py",
@@ -73,7 +72,7 @@ class Submission:
 
     @property
     def submitted_at_iso(self) -> str:
-        return datetime.fromtimestamp(self.submitted_at, tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(self.submitted_at, tz=UTC).isoformat()
 
     def problem_path(self, problems_root: str) -> PurePosixPath:
         return PurePosixPath(problems_root) / self.problem_dir_name
