@@ -1,7 +1,7 @@
 from argparse import Namespace
 
-from leetcode_sync.cli import main, cmd_sync
-from leetcode_sync.planner import SyncPlan
+from leetcode_sync.cli import main, cmd_sync, print_plan
+from leetcode_sync.planner import FileChange, SyncPlan
 
 
 class FakeGitHub:
@@ -67,3 +67,21 @@ def test_help_command_prints_topic_help_without_config(capsys):
     assert result == 0
     assert "usage: leetcode-sync sync" in captured.out
     assert "--dry-run" in captured.out
+
+
+def test_print_plan_groups_changes_by_problem(capsys):
+    plan = SyncPlan(
+        changes=[
+            FileChange("problems/0001-two-sum/solution.java", "code", "create"),
+            FileChange("problems/0003-longest-substring/solution.py", "code", "create"),
+            FileChange("problems/0001-two-sum/notes.md", "# Notes", "create"),
+            FileChange("problems/0003-longest-substring/metadata.json", "{}", "create"),
+            FileChange("problems/0001-two-sum/metadata.json", "{}", "create"),
+        ]
+    )
+
+    print_plan(plan)
+    captured = capsys.readouterr()
+
+    assert "problems/0001-two-sum/\n  create: solution.java\n  create: metadata.json\n  create: notes.md" in captured.out
+    assert "problems/0003-longest-substring/\n  create: solution.py\n  create: metadata.json" in captured.out
