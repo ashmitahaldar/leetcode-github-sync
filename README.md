@@ -11,6 +11,20 @@ It uses:
 - A TOML config file for non-secret settings.
 - A git-ignored `.env` file for secrets.
 
+## Table Of Contents
+
+- [How It Works](#how-it-works)
+- [Install](#install)
+- [Quick Start: Try It Safely](#quick-start-try-it-safely)
+- [Configure](#configure)
+- [Getting LeetCode Cookies](#getting-leetcode-cookies)
+- [Getting A GitHub Token](#getting-a-github-token)
+- [Commands](#commands)
+- [Repository Output](#repository-output)
+- [Behavior](#behavior)
+- [Uninstall Or Reset](#uninstall-or-reset)
+- [Tests](#tests)
+
 ## How It Works
 
 ```text
@@ -39,9 +53,27 @@ User-owned notes are protected: `notes.md` is created once if missing, then neve
 
 ## Install
 
+macOS/Linux:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+```
+
+Windows Command Prompt:
+
+```bat
+py -m venv .venv
+.venv\Scripts\activate.bat
 pip install -e ".[dev]"
 ```
 
@@ -52,18 +84,48 @@ Use dry-run mode before writing anything to GitHub.
 1. Make sure your target GitHub repository already exists and has a `main` branch.
 2. Activate the local environment:
 
+macOS/Linux:
+
 ```bash
 source .venv/bin/activate
 ```
 
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Windows Command Prompt:
+
+```bat
+.venv\Scripts\activate.bat
+```
+
 3. Edit `leetcode-sync.toml` with your GitHub owner, repo, and branch.
-4. Create `.env`:
+4. Create `.env`.
+
+macOS/Linux:
 
 ```bash
 cp .env.example .env
 ```
 
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Windows Command Prompt:
+
+```bat
+copy .env.example .env
+```
+
 5. Add your LeetCode cookies and GitHub token to `.env`.
+   - Need LeetCode cookies? See [Getting LeetCode Cookies](#getting-leetcode-cookies).
+   - Need a GitHub token? See [Getting A GitHub Token](#getting-a-github-token).
 6. Check that authentication works:
 
 ```bash
@@ -95,8 +157,22 @@ branch = "main"
 
 Create `.env` from `.env.example`:
 
+macOS/Linux:
+
 ```bash
 cp .env.example .env
+```
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Windows Command Prompt:
+
+```bat
+copy .env.example .env
 ```
 
 Fill in:
@@ -114,7 +190,9 @@ The CLI reuses your existing browser login. You do not need to type your LeetCod
 ### Chrome Or Edge
 
 1. Go to [leetcode.com](https://leetcode.com) and make sure you are logged in.
-2. Open DevTools with `Cmd + Option + I`.
+2. Open DevTools:
+   - macOS: `Cmd + Option + I`
+   - Windows/Linux: `Ctrl + Shift + I`
 3. Go to the **Application** tab.
 4. In the left sidebar, open **Storage → Cookies → https://leetcode.com**.
 5. Find these cookie names:
@@ -246,9 +324,26 @@ problems/
 
 Local cleanup is manual and non-destructive:
 
+macOS/Linux:
+
 ```bash
 rm -rf .venv .pytest_cache
 rm -f .env
+```
+
+Windows PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force .venv, .pytest_cache
+Remove-Item .env
+```
+
+Windows Command Prompt:
+
+```bat
+rmdir /s /q .venv
+rmdir /s /q .pytest_cache
+del .env
 ```
 
 To remove synced files from GitHub, delete them in the target repository yourself so you can review exactly what will be removed.
