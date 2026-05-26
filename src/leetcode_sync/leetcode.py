@@ -74,7 +74,7 @@ class LeetCodeClient:
 
     def fetch_accepted_submissions(
         self,
-        page_size: int = 50,
+        page_size: int = 20,
         since_timestamp: int | None = None,
         progress: Callable[[str], None] | None = None,
     ) -> list[Submission]:
@@ -118,9 +118,9 @@ class LeetCodeClient:
                 )
             has_next = bool(page.get("hasNext")) or bool(page.get("lastKey"))
             last_key = page.get("lastKey")
-            if not has_next or not page_has_submission_at_or_after_cutoff:
+            if not raw_submissions or not has_next or not page_has_submission_at_or_after_cutoff:
                 break
-            offset += page_size
+            offset += len(raw_submissions)
             page_number += 1
 
         return submissions

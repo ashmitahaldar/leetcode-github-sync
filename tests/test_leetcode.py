@@ -137,6 +137,64 @@ class IncrementalPagingHttp:
         )()
 
 
+class CappedPagingHttp:
+    def __init__(self):
+        self.offsets = []
+        self.detail_ids = []
+
+    def request_json(self, method, url, headers=None, body=None):
+        query = body["query"]
+        if "submissionList" in query:
+            offset = body["variables"]["offset"]
+            self.offsets.append(offset)
+            submissions = [
+                {"id": str(offset + index + 1), "statusDisplay": "Accepted", "timestamp": 1000 - offset - index}
+                for index in range(20)
+            ]
+            return type(
+                "Response",
+                (),
+                {
+                    "data": {
+                        "data": {
+                            "submissionList": {
+                                "lastKey": None,
+                                "hasNext": offset < 40,
+                                "submissions": submissions,
+                            }
+                        }
+                    }
+                },
+            )()
+
+        submission_id = str(body["variables"]["submissionId"])
+        self.detail_ids.append(submission_id)
+        return type(
+            "Response",
+            (),
+            {
+                "data": {
+                    "data": {
+                        "submissionDetails": {
+                            "id": submission_id,
+                            "code": "class Solution:\n    pass",
+                            "runtime": "40 ms",
+                            "memory": "16 MB",
+                            "timestamp": 100,
+                            "statusDisplay": "Accepted",
+                            "lang": {"name": "python3"},
+                            "question": {
+                                "questionFrontendId": submission_id,
+                                "title": f"Problem {submission_id}",
+                                "titleSlug": f"problem-{submission_id}",
+                            },
+                        }
+                    }
+                }
+            },
+        )()
+
+
 def test_graphql_sends_browser_and_csrf_headers():
     http = CapturingHttp()
     client = LeetCodeClient(
@@ -198,3 +256,16 @@ def test_fetch_without_cutoff_reads_all_pages():
 
     assert http.detail_ids == ["201", "203", "204"]
     assert http.list_requests == 2
+
+
+def test_pagination_advances_by_returned_count_not_requested_limit():
+    http = CappedPagingHttp()
+    client = LeetCodeClient(
+        secrets=SecretBundle(leetcode_session="session", csrf_token="csrf", github_token="github"),
+        http=http,
+    )
+
+    client.fetch_accepted_submissions(page_size=50)
+
+    assert http.offsets == [0, 20, 40]
+    assert len(http.detail_ids) == 60

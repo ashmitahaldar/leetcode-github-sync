@@ -27,7 +27,7 @@ request_delay_seconds = 0.35
 max_retries = 3
 
 [leetcode]
-page_size = 50
+page_size = 20
 """
 
 ENV_EXAMPLE_TEMPLATE = """# Copy this file to .env and fill in real values.

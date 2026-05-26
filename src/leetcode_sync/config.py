@@ -24,7 +24,7 @@ class SyncConfig:
 
 @dataclass(frozen=True)
 class LeetCodeConfig:
-    page_size: int = 50
+    page_size: int = 20
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ def load_config(path: Path) -> AppConfig:
         request_delay_seconds=float(sync_data.get("request_delay_seconds", 0.35)),
         max_retries=int(sync_data.get("max_retries", 3)),
     )
-    leetcode = LeetCodeConfig(page_size=int(leetcode_data.get("page_size", 50)))
+    leetcode = LeetCodeConfig(page_size=int(leetcode_data.get("page_size", 20)))
     config = AppConfig(github=github, sync=sync, leetcode=leetcode)
     validate_config(config)
     return config
